@@ -24,8 +24,15 @@
       display: flex;
       overflow-x: auto;
       gap: 1rem;
-      padding-bottom: 1rem;
       scroll-snap-type: x mandatory;
+      padding-bottom: 1rem;
+    }
+    .video-row::-webkit-scrollbar {
+      display: none;
+    }
+    .video-row {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
     .video-card {
       flex: 0 0 240px;
@@ -36,6 +43,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
     .video-card video {
       width: 100%;
@@ -44,25 +52,30 @@
       background: #000;
       flex-shrink: 0;
     }
+    .timestamp {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 0.75rem;
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
     .video-info {
       padding: 0.5rem;
     }
     .video-info h3 {
       font-size: 1rem;
       margin: 0.25rem 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .video-info p {
       font-size: 0.875rem;
       color: #666;
       margin: 0;
-    }
-    /* Hide scrollbar for most browsers */
-    .video-row::-webkit-scrollbar {
-      display: none;
-    }
-    .video-row {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
     }
   </style>
 </head>
@@ -77,23 +90,37 @@
         <video controls preload="metadata" poster="thumbnail1.jpg">
           <source src="https://ia601508.us.archive.org/33/items/LOGK2013/Страна%20Хороших%20Деточек%202013%20Hd%20new%20subs-1.mp4" type="video/mp4">
         </video>
+        <div class="timestamp">0:00</div>
         <div class="video-info">
           <h3>Episode Title 1</h3>
-          <p>Duration • Date</p>
+          <p>...</p>
         </div>
       </div>
-      <!-- More video cards -->
-      <div class="video-card">
-        <video controls preload="metadata" poster="thumbnail2.jpg">
-          <source src="https://archive.org/download/example2.mp4" type="video/mp4">
-        </video>
-        <div class="video-info">
-          <h3>Episode Title 2</h3>
-          <p>Duration • Date</p>
-        </div>
-      </div>
-      <!-- Add as many as you like -->
+      <!-- Repeat .video-card blocks as needed -->
     </div>
   </div>
+
+  <script>
+    document.querySelectorAll('.video-card').forEach(card => {
+      const video = card.querySelector('video');
+      const ts = card.querySelector('.timestamp');
+
+      // Show duration once metadata is loaded
+      video.addEventListener('loadedmetadata', () => {
+        const dur = Math.floor(video.duration);
+        const m = Math.floor(dur / 60);
+        const s = dur % 60;
+        ts.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      });
+
+      // Optionally, update currentTime stamp as it plays
+      video.addEventListener('timeupdate', () => {
+        const cur = Math.floor(video.currentTime);
+        const m = Math.floor(cur / 60);
+        const s = cur % 60;
+        ts.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      });
+    });
+  </script>
 </body>
 </html>
