@@ -3,123 +3,121 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Video Gallery</title>
+  <title>My Mixed Video Gallery</title>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f5f5f5;
-      color: #333;
-    }
-    header {
-      padding: 1rem;
-      background: #202020;
-      color: white;
-      text-align: center;
-    }
-    .gallery-container {
-      padding: 1rem;
-    }
+    body { margin: 0; font-family: sans-serif; background: #f5f5f5; color: #333; }
+    header { padding: 1rem; background: #202020; color: white; text-align: center; }
+    .gallery-container { padding: 1rem; }
     .video-row {
-      display: flex;
-      overflow-x: auto;
-      gap: 1rem;
-      scroll-snap-type: x mandatory;
+      display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 1rem;
       padding-bottom: 1rem;
     }
-    .video-row::-webkit-scrollbar {
-      display: none;
-    }
-    .video-row {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
+    .video-row::-webkit-scrollbar { display: none; }
+    .video-row { -ms-overflow-style: none; scrollbar-width: none; }
     .video-card {
-      flex: 0 0 240px;
-      scroll-snap-align: start;
-      background: white;
-      border-radius: 4px;
+      flex: 0 0 240px; background: white; border-radius: 4px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      overflow: hidden; scroll-snap-align: start;
+      position: relative; display: flex; flex-direction: column;
+    }
+    .thumbnail {
+      width: 100%; height: 135px; object-fit: cover;
+      background: #000; cursor: pointer;
       position: relative;
     }
-    .video-card video {
-      width: 100%;
-      height: 135px;
-      object-fit: cover;
-      background: #000;
-      flex-shrink: 0;
+    .play-button {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px; height: 48px;
+      background: url('https://i.imgur.com/TxzC70f.png') center/contain no-repeat;
+      pointer-events: none;
     }
+    .video-info { padding: 0.5rem; }
+    .video-info h3 { font-size: 1rem; margin: 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .timestamp {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      font-size: 0.75rem;
-      padding: 2px 4px;
-      border-radius: 2px;
-    }
-    .video-info {
-      padding: 0.5rem;
-    }
-    .video-info h3 {
-      font-size: 1rem;
-      margin: 0.25rem 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .video-info p {
-      font-size: 0.875rem;
-      color: #666;
-      margin: 0;
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.7); color: white;
+      font-size: 0.75rem; padding: 2px 4px; border-radius: 2px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>My Video Gallery</h1>
-  </header>
-
+  <header><h1>My Video Gallery</h1></header>
   <div class="gallery-container">
     <div class="video-row">
+
+      <!-- Local MP4 Card -->
       <div class="video-card">
-        <video controls preload="metadata" poster="thumbnail1.jpg">
-          <source src="https://www.youtube.com/watch?v=hKWcwuFrqfQ" type="video/mp4">
-        </video>
-        <div class="timestamp">0:00</div>
-        <div class="video-info">
-          <h3>Episode Title 1</h3>
-          <p>...</p>
-        </div>
+        <video preload="metadata" poster="" muted style="display:none;"></video>
+        <img class="thumbnail" data-type="mp4"
+             data-src="https://archive.org/download/your_video.mp4#t=0.1"
+             alt="Episode 1 Thumbnail">
+        <div class="play-button"></div>
+        <div class="timestamp">--:--</div>
+        <div class="video-info"><h3>Local Episode 1</h3><p>...</p></div>
       </div>
-      <!-- Repeat .video-card blocks as needed -->
+
+      <!-- YouTube Card -->
+      <div class="video-card">
+        <div class="thumbnail" data-type="youtube" data-id="hKWcwuFrqfQ"></div>
+        <div class="play-button"></div>
+        <div class="timestamp">--:--</div>
+        <div class="video-info"><h3>YouTube Video</h3><p>...</p></div>
+      </div>
+
+      <!-- Add more cards similarly... -->
+
     </div>
   </div>
 
   <script>
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
     document.querySelectorAll('.video-card').forEach(card => {
-      const video = card.querySelector('video');
+      const thumb = card.querySelector('.thumbnail');
       const ts = card.querySelector('.timestamp');
+      const videoElem = card.querySelector('video');
 
-      // Show duration once metadata is loaded
-      video.addEventListener('loadedmetadata', () => {
-        const dur = Math.floor(video.duration);
-        const m = Math.floor(dur / 60);
-        const s = dur % 60;
-        ts.textContent = `${m}:${s.toString().padStart(2,'0')}`;
-      });
+      if (thumb.dataset.type === 'mp4') {
+        const src = thumb.dataset.src;
+        videoElem.src = src;
+        videoElem.load();
 
-      // Optionally, update currentTime stamp as it plays
-      video.addEventListener('timeupdate', () => {
-        const cur = Math.floor(video.currentTime);
-        const m = Math.floor(cur / 60);
-        const s = cur % 60;
-        ts.textContent = `${m}:${s.toString().padStart(2,'0')}`;
-      });
+        videoElem.addEventListener('loadedmetadata', () => {
+          ts.textContent = formatTime(videoElem.duration);
+          thumb.src = videoElem.currentSrc.replace(/#t=\d+(\.\d+)?$/, '');
+        });
+
+        thumb.onclick = () => {
+          thumb.replaceWith(videoElem);
+          card.querySelector('.play-button').remove();
+          videoElem.style.display = 'block';
+          videoElem.controls = true;
+          videoElem.play();
+        };
+
+      } else if (thumb.dataset.type === 'youtube') {
+        const id = thumb.dataset.id;
+        thumb.style.backgroundImage = `url(https://img.youtube.com/vi/${id}/hqdefault.jpg)`;
+        thumb.style.backgroundSize = 'cover';
+
+        // No duration via metadata; leave timestamp blank for YouTube
+
+        thumb.onclick = () => {
+          const iframe = document.createElement('iframe');
+          iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+          iframe.frameBorder = '0';
+          iframe.allow = 'autoplay; encrypted-media';
+          iframe.allowFullscreen = true;
+          iframe.width = '100%';
+          iframe.height = '135px';
+          thumb.replaceWith(iframe);
+          card.querySelector('.play-button').remove();
+        };
+      }
     });
   </script>
 </body>
