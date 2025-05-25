@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Mixed Video Gallery</title>
+  <title>freon</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/png"
+        href="https://static.wikia.nocookie.net/silly-cat/images/3/35/CuhBG.png/revision/latest?cb=20231025181331">
   <style>
     body { margin: 0; font-family: sans-serif; background: #f5f5f5; color: #333; }
     header { padding: 1rem; background: #202020; color: white; text-align: center; }
     .gallery-container { padding: 1rem; }
     .video-row {
-      display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 1rem;
-      padding-bottom: 1rem;
+      display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+      gap: 1rem; padding-bottom: 1rem;
     }
     .video-row::-webkit-scrollbar { display: none; }
     .video-row { -ms-overflow-style: none; scrollbar-width: none; }
@@ -32,14 +35,24 @@
       background: url('https://i.imgur.com/TxzC70f.png') center/contain no-repeat;
       pointer-events: none;
     }
+    .cast-button {
+      position: absolute; top: 8px; right: 8px;
+      width: 24px; height: 24px;
+      background: url('https://img.icons8.com/ios-filled/50/000000/cast.png') center/contain no-repeat;
+      cursor: pointer;
+      z-index: 2;
+    }
     .video-info { padding: 0.5rem; }
-    .video-info h3 { font-size: 1rem; margin: 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .video-info h3 { font-size: 1rem; margin: 0.25rem 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .timestamp {
       position: absolute; bottom: 8px; right: 8px;
       background: rgba(0,0,0,0.7); color: white;
       font-size: 0.75rem; padding: 2px 4px; border-radius: 2px;
     }
   </style>
+  <!-- Chromecast Sender SDK -->
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 </head>
 <body>
   <header><h1>My Video Gallery</h1></header>
@@ -48,7 +61,8 @@
 
       <!-- Local MP4 Card -->
       <div class="video-card">
-        <video preload="metadata" poster="" muted style="display:none;"></video>
+        <div class="cast-button"></div>
+        <video preload="metadata" poster="" muted x-webkit-airplay="allow" style="display:none;"></video>
         <img class="thumbnail" data-type="mp4"
              data-src="https://archive.org/download/your_video.mp4#t=0.1"
              alt="Episode 1 Thumbnail">
@@ -59,10 +73,14 @@
 
       <!-- YouTube Card -->
       <div class="video-card">
+        <div class="cast-button"></div>
         <div class="thumbnail" data-type="youtube" data-id="hKWcwuFrqfQ"></div>
         <div class="play-button"></div>
         <div class="timestamp">--:--</div>
-        <div class="video-info"><h3>YouTube Video</h3><p>...</p></div>
+        <div class="video-info">
+          <h3>Land Of The Good Kids</h3>
+          <p>Sasha gets transported to a fantasy world…</p>
+        </div>
       </div>
 
       <!-- Add more cards similarly... -->
@@ -76,15 +94,47 @@
       return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
+    // Initialize Cast API when available
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+      if (isAvailable) {
+        cast.framework.CastContext.getInstance().setOptions({
+          receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+          autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+      }
+    };
+
     document.querySelectorAll('.video-card').forEach(card => {
       const thumb = card.querySelector('.thumbnail');
       const ts = card.querySelector('.timestamp');
       const videoElem = card.querySelector('video');
+      const castBtn = card.querySelector('.cast-button');
+
+      // Show Cast button only if Cast is available
+      castBtn.style.display = 'none';
+      if (window.chrome && chrome.cast && chrome.cast.isAvailable) {
+        castBtn.style.display = 'block';
+      }
+
+      castBtn.onclick = () => {
+        if (!videoElem || !videoElem.currentSrc) return;
+        cast.framework.CastContext.getInstance().requestSession()
+          .then(session => {
+            const mediaInfo = new chrome.cast.media.MediaInfo(videoElem.currentSrc, 'video/mp4');
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            request.autoplay = true;
+            return session.loadMedia(request);
+          })
+          .catch(console.error);
+      };
 
       if (thumb.dataset.type === 'mp4') {
         const src = thumb.dataset.src;
         videoElem.src = src;
         videoElem.load();
+        videoElem.remote && videoElem.remote.watchAvailability(available => {
+          // Remote playback via AirPlay
+        }).catch(() => {});
 
         videoElem.addEventListener('loadedmetadata', () => {
           ts.textContent = formatTime(videoElem.duration);
@@ -103,9 +153,6 @@
         const id = thumb.dataset.id;
         thumb.style.backgroundImage = `url(https://img.youtube.com/vi/${id}/hqdefault.jpg)`;
         thumb.style.backgroundSize = 'cover';
-
-        // No duration via metadata; leave timestamp blank for YouTube
-
         thumb.onclick = () => {
           const iframe = document.createElement('iframe');
           iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
